@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
+    <defs>
+        <mask id="cylinder-cut">
+            <rect width="128" height="128" fill="#fff" />
+            <circle cx="90" cy="88" r="37" fill="#000" />
+            <path d="M70 104 60 124l26-8" stroke="#000" stroke-width="14" stroke-linejoin="round" />
+        </mask>
+        <mask id="label-cut">
+            <rect width="128" height="128" fill="#fff" />
+            <text x="90" y="96.5" fill="#000" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" text-anchor="middle" letter-spacing="-0.5">SQL</text>
+        </mask>
+    </defs>
+    <g mask="url(#cylinder-cut)" stroke="currentColor" stroke-width="8" stroke-linecap="round">
+        <ellipse cx="48" cy="26" rx="36" ry="12" />
+        <path d="M12 26v72c0 6.6 16.1 12 36 12s36-5.4 36-12V26" />
+        <path d="M12 50c0 6.6 16.1 12 36 12s36-5.4 36-12" />
+        <path d="M12 74c0 6.6 16.1 12 36 12s36-5.4 36-12" />
+    </g>
+    <g mask="url(#label-cut)" fill="currentColor">
+        <circle cx="90" cy="88" r="30" />
+        <path d="M70 104 62 122l24-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+    </g>
+    <style>
+        svg { color: #000; }
+        @media (prefers-color-scheme: dark) {
+            svg { color: #FFF; }
+        }
+    </style>
+</svg>

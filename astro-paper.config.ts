@@ -1,22 +1,12 @@
 import { defineAstroPaperConfig } from "./src/types/config";
 
-/*
- * ============================================================
- *  EDIT ME: everything personal about the site lives here.
- *  Replace every value marked TODO before publishing.
- * ============================================================
- */
 export default defineAstroPaperConfig({
   site: {
-    // TODO: https://<your-github-user>.github.io/ (or your own domain)
     url: "https://sqlwithgabriel.github.io/",
-    // TODO: blog name shown in the header and browser tab
     title: "sqlwithgabriel",
     description:
       "Deep dives into SQL Server, PostgreSQL, cloud databases and data engineering.",
-    // TODO: your name as it should appear on posts
     author: "Gabriel da Silva",
-    // TODO: link opened when someone clicks your name (LinkedIn is a good choice)
     profile: "https://www.linkedin.com/in/gabrieldba/",
     ogImage: "default-og.jpg",
     lang: "en",
@@ -38,7 +28,6 @@ export default defineAstroPaperConfig({
     },
     search: "pagefind",
   },
-  // TODO: your links (remove the ones you don't want)
   socials: [
     { name: "linkedin", url: "https://www.linkedin.com/in/gabrieldba/" },
     { name: "github", url: "https://github.com/gbrl-exe" },

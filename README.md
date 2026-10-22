@@ -5,7 +5,7 @@ Built with [Astro](https://astro.build/) and the [AstroPaper](https://github.com
 ## Edit
 
 - Site settings (name, author, links, URL): `astro-paper.config.ts`
-- Posts: `src/content/posts/*.md`
+- Posts: `src/content/posts/<slug>/index.md`, with images in `images/` beside it
 - About page: `src/content/pages/about.md`
 - Colors: `src/styles/theme.css`
 
@@ -26,12 +26,10 @@ Front matter:
 title: "Post title"
 description: "One-sentence summary (used for SEO and social cards)."
 pubDatetime: 2026-10-17T12:00:00Z
-tags: [sql-server, performance]
 ---
 ```
 
 Useful Markdown features:
 
-- Code block with a file label: ```` ```sql file="setup.sql" ````
 - Callouts: `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`, `> [!CAUTION]`
 - A heading named `## Table of contents` generates the table of contents.

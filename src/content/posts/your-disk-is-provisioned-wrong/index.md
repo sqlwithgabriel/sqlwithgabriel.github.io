@@ -4,9 +4,9 @@ description: "Why IOPS alone doesn't describe a disk: a SQL Server test on Azure
 pubDatetime: 2026-10-22T01:40:00Z
 ---
 
-A DBA doesn't need to be a storage specialist. But we do need to know where the bottleneck is, because "the database is slow" usually lands on our desk first, and "let's buy a bigger disk" is often the first answer someone proposes.
+A DBA doesn't need to be a storage specialist, but we need to understand where the bottleneck is. Database performance issues often fall under our responsibility, and increasing disk capacity or performance is not always the right solution.
 
-Before we start, a disclaimer: I'm not a storage person. Someone from that area could probably take this analysis several levels deeper. For our scenario, though, that isn't necessary. Everything we need is in a SQL Server query, two PerfMon counters and a bit of math.
+Before we start, a disclaimer: I'm not a storage guy. Someone from that area could probably take this analysis several levels deeper. For our scenario, though, that isn't necessary. Everything we need is in a SQL Server query, two PerfMon counters and a bit of math.
 
 ## Table of contents
 

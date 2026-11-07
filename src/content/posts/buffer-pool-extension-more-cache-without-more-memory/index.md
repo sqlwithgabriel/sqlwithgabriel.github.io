@@ -66,7 +66,7 @@ The interesting part is where the BPE file lives. This VM size comes with a loca
 
 Side by side with the data disk:
 
-| Disk | Read IOPS | Read throughput |
+| Disk | IOPS | Read throughput |
 | :---: | :---: | :---: |
 | Data disk (Premium SSD v2, `F:`) | 3,000 | 125 MB/s |
 | Temporary disk (local NVMe, `D:`) | 37,500 | 280 MB/s |
@@ -77,7 +77,7 @@ This temporary disk is ephemeral: its content can be lost when the VM is dealloc
 
 ## Running the test
 
-The test is a simple aggregation over a table of about 10 GB, a scan that reads the whole table:
+The test is a simple aggregation over a table of about 10 GiB, a scan that reads the whole table:
 
 ```sql
 SELECT SUM(SalesAmount) AS SalesAmount_sum FROM dbo.FactResellerSalesXL_BIG;
@@ -89,20 +89,20 @@ For each scenario, I set the buffer pool size with `max server memory`, enabled 
 
 | Buffer pool | BPE | 1st run | 2nd run | 3rd run | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| 14 GB | OFF | 1min20 | 3s | 3s | Cache doing its job |
-| 2 GB | OFF | 1min20 | 1min20 | 1min20 | Cache too small |
-| 2 GB | 16 GB | 1min58 | 52s | 38s | Slower first run |
-| 14 GB | 56 GB | 1min20 | 3s | 3s | BPE wasn't used |
+| 14 GiB | OFF | 1min20 | 3s | 3s | Cache doing its job |
+| 2 GiB | OFF | 1min20 | 1min20 | 1min20 | Cache too small |
+| 2 GiB | 16 GiB | 1min58 | 52s | 38s | Slower first run |
+| 14 GiB | 56 GiB | 1min20 | 3s | 3s | BPE wasn't used |
 
 ## Understanding the results
 
-**14 GB, BPE off.** The table fits in the buffer pool. The first execution reads it from disk, and the second and third ones find every page in memory: 3 seconds.
+**14 GiB, BPE off.** The table fits in the buffer pool. The first execution reads it from disk, and the second and third ones find every page in memory: 3 seconds.
 
-**2 GB, BPE off.** The table is five times bigger than the buffer pool. While the scan reads the end of the table, it evicts the pages it read at the beginning. When the second execution starts, those pages are no longer in memory, and the whole table comes from disk again: 1min20, the same as the first execution. The third execution is no different. Without BPE, the result can only repeat: either the pages are already in memory, or they're read from disk again.
+**2 GiB, BPE off.** The table is five times bigger than the buffer pool. While the scan reads the end of the table, it evicts the pages it read at the beginning. When the second execution starts, those pages are no longer in memory, and the whole table comes from disk again: 1min20, the same as the first execution. The third execution is no different. Without BPE, the result can only repeat: either the pages are already in memory, or they're read from disk again.
 
-That 1min20 isn't a coincidence. The scan reads large blocks, so the limit is the disk's throughput, not its IOPS (as we saw in my [previous post about disks](/posts/your-disk-is-provisioned-wrong/), it all depends on the I/O size). A quick calculation: 10,000 MB ÷ 125 MB/s = 80 seconds. That's exactly the time we measured. The scan runs as fast as the data disk allows.
+That 1min20 isn't a coincidence. The scan reads large blocks, so the limit is the disk's throughput, not its IOPS (as we saw in my [previous post about disks](/posts/your-disk-is-provisioned-wrong/), it all depends on the I/O size). A quick calculation: Azure measures throughput in decimal MB (1 MB = 1,000,000 bytes), so 10 GiB is about 10,737 MB. 10,737 MB ÷ 125 MB/s ≈ 86 seconds, in the same range as the 80 seconds we measured. The scan runs as fast as the data disk allows.
 
-**2 GB, BPE of 16 GB.** Now the interesting scenario. Same 2 GB of memory, and the second execution dropped from 1min20 to 52 seconds, about 35% faster. The third one dropped to 38 seconds, about 52% faster.
+**2 GiB, BPE of 16 GiB.** Now the interesting scenario. Same 2 GiB of memory, and the second execution dropped from 1min20 to 52 seconds, about 35% faster. The third one dropped to 38 seconds, about 52% faster.
 
 Pages evicted from memory didn't just disappear. They went to the BPE file on the temporary disk, and in the second execution SQL Server could read them from there instead of going back to the data disk.
 
@@ -110,16 +110,16 @@ Here's what `sys.dm_os_buffer_descriptors` showed for the test database after ea
 
 | After | Pages in memory (L1) | Pages in the BPE (L2) |
 | :---: | :---: | :---: |
-| 1st execution | 204,276 (1,596 MB) | 1,096,032 (8,563 MB) |
-| 2nd execution | 41,298 (323 MB) | 1,231,239 (9,619 MB) |
+| 1st execution | 204,276 (1,596 MiB) | 1,096,032 (8,563 MiB) |
+| 2nd execution | 41,298 (323 MiB) | 1,231,239 (9,619 MiB) |
 
-After the first execution, the whole table, about 10 GB, was in cache: around 1.6 GB in memory and 8.6 GB in the BPE. That's the proof the BPE was used.
+After the first execution, the whole table, about 10 GiB, was in cache: around 1.6 GiB in memory and 8.4 GiB in the BPE. That's the proof that the pages went to the BPE.
 
-So why 52 seconds and not 3 in the second execution? First, because the BPE doesn't move the data all at once. Pages only go to the BPE when they're evicted from memory. After the first execution, about 1.6 GB of the table was still only in memory. With a 2 GB buffer pool, those pages had to make room for the rest of the table during the second execution, so they were written to the BPE for the first time. That's why the BPE grew from 8.6 GB to 9.6 GB. The second execution read almost the whole table from the BPE while still writing to it. By the third execution, practically everything was already there.
+So why 52 seconds and not 3 in the second execution? First, because the BPE doesn't move the data all at once. Pages only go to the BPE when they're evicted from memory. After the first execution, about 1.6 GiB of the table was still only in memory. With a 2 GiB buffer pool, those pages had to make room for the rest of the table during the second execution, so they were written to the BPE for the first time. That's why the BPE grew from 8.4 GiB to 9.4 GiB. The second execution read almost the whole table from the BPE while still writing to it. By the third execution, practically everything was already there.
 
-Second, because an SSD isn't memory. Using the same calculation, reading 10 GB at the temporary disk's 280 MB/s takes at least 36 seconds. That's a calculation, not a measurement, but it explains why the gain has a limit.
+Second, because an SSD isn't memory. Using the same calculation, reading 10,737 MB at the temporary disk's 280 MB/s takes at least 38 seconds. That's a calculation, not a measurement, but it explains why the gain has a limit.
 
-And the numbers agree. In the third execution, with practically all the pages already in the BPE, the time dropped to 38 seconds, very close to that 36-second limit.
+And the numbers agree. In the third execution, with practically all the pages already in the BPE, the time dropped to 38 seconds, practically that 38-second limit.
 
 There's also a price: the first execution got slower, from 1min20 to 1min58, almost 50% more. During that execution, besides reading from the data disk, SQL Server is writing every evicted page to the BPE file. BPE isn't free.
 
@@ -127,7 +127,7 @@ In other words, a cold cache hurts much more when the BPE is enabled. Whenever t
 
 That's also why it makes no sense to put the BPE on a disk that is slower than your data disk, or one that isn't much faster. Every page that goes through the BPE costs a write and, later, a read. If the BPE disk doesn't have a clear advantage, that extra work isn't worth it, and reading the page from the data file again is just as good.
 
-**14 GB, BPE of 56 GB.** Same result as without BPE, in every execution. The table fits in the buffer pool, so no page had to be evicted, and nothing went to the BPE. BPE only works when there's pressure on the buffer pool. If the working set already fits in memory, it doesn't add anything.
+**14 GiB, BPE of 56 GiB.** Same result as without BPE, in every execution. The table fits in the buffer pool, so no page had to be evicted, and nothing went to the BPE. BPE only works when there's pressure on the buffer pool. If the working set already fits in memory, it doesn't add anything.
 
 Notice that the times alone don't prove where each page came from. They show the effect, not the cause. The DMV numbers above are what prove the BPE was really used, and the next section shows how to check it in your environment.
 
@@ -154,7 +154,7 @@ Having the BPE enabled doesn't mean your queries are benefiting from it. Here's 
 - `buffer_pool_extension_pages_evicted`: pages evicted from the BPE file.
 - `buffer_pool_eviction_thresholds_recalculated`: the eviction thresholds were recalculated.
 
-In our 14 GB scenario, for example, these counters would stay at zero: the BPE is enabled, but not used.
+In our 14 GiB scenario, for example, these counters would stay at zero: the BPE is enabled, but not used.
 
 ## How big should the BPE be?
 
@@ -162,12 +162,12 @@ The documentation sets limits for SQL Server 2022:
 
 - **Minimum:** larger than the smaller of physical memory and `max server memory`.
 - **Maximum, Standard edition on a virtual machine:** 16 times the physical memory.
-- **Maximum, Standard edition on a physical machine:** 4 times the physical memory, up to 512 GB.
+- **Maximum, Standard edition on a physical machine:** 4 times the physical memory, up to 512 GiB.
 - **Maximum, Enterprise and Developer editions:** 32 times the physical memory.
 
 Microsoft also recommends a ratio between physical memory and BPE of 1:16 or less, and says a ratio between 1:4 and 1:8 might be optimal.
 
-Let's take an example: a machine with 128 GB of memory, leaving about 10% to the operating system. `max server memory` would be around 115 GB, so the BPE needs to be larger than that. The 1:4 to 1:8 ratio, applied to 128 GB of physical memory, gives 512 GB to 1 TB.
+Let's take an example: a machine with 128 GiB of memory, leaving about 10% to the operating system. `max server memory` would be around 115 GiB, so the BPE needs to be larger than that. The 1:4 to 1:8 ratio, applied to 128 GiB of physical memory, gives 512 GiB to 1 TiB.
 
 But these are limits, not targets. Local SSDs usually aren't that big, and, as we saw, they're often already used for tempdb. In practice, I'd size it like this:
 
@@ -179,7 +179,7 @@ Sharing the local disk also has a performance cost. tempdb and the BPE will comp
 
 ## What if the BPE disk disappears?
 
-Remember that the temporary disk is ephemeral. On a cloud VM, that's fine for a cache, and the same idea opens another interesting scenario on premises. Adding a very fast SSD with RAID and the usual redundancy to a server is expensive. For BPE, that disk, in theory, doesn't need to be reliable, so a single fast SSD without redundancy could be enough, and much cheaper. The documentation explains why: only clean pages are written to the L2 cache, which helps maintain data safety. Every page in the BPE file also exists in the data file. If the file is lost, no data is lost with it.
+On a cloud VM, using the temporary disk for BPE is the simple path, because the cloud provider gives you that disk ready to use. But it's ephemeral and has no redundancy. If the physical host fails, the disk can crash or simply disappear. On premises, putting the BPE on a single SSD without redundancy, or one less reliable than the other disks in your server, is basically the same scenario. And, in theory, that's acceptable. The documentation explains why: only clean pages are written to the L2 cache, which helps maintain data safety. Every page in the BPE file also exists in the data file, so if the file is lost, no data is lost with it.
 
 I wanted to see that in practice. With the queries running, I took the disk with the BPE file offline. SQL Server didn't crash. The queries kept running and started reading the pages from the data file.
 
@@ -214,7 +214,7 @@ What does change is performance. From that point on, the buffer pool is back to 
 
 ## Conclusion
 
-Buffer Pool Extension is a niche tool. It can help when the buffer pool is under pressure, the working set is larger than the available memory, pages are reused, and there's a real performance gap between the cache SSD and the main storage. In our test, with the same 2 GB of memory, a query that took 1min20 ran in 52 seconds on the second execution and in 38 seconds from the third on, at the cost of a slower first execution.
+Buffer Pool Extension is a niche tool. It can help when the buffer pool is under pressure, the working set is larger than the available memory, pages are reused, and there's a real performance gap between the cache SSD and the main storage. In our test, with the same 2 GiB of memory, a query that took 1min20 ran in 52 seconds on the second execution and in 38 seconds from the third on, at the cost of a slower first execution.
 
 In the end, the question is simple: when a page isn't in memory, would you rather read it from a disk with 3,000 IOPS and 125 MB/s, or from one with 37,500 IOPS and 280 MB/s? That's why BPE can be worth it. It doesn't make the SSD as fast as memory, but it lets SQL Server go to the faster disk instead of the slower one.
 

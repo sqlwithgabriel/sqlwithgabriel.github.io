@@ -179,7 +179,7 @@ Sharing the local disk also has a performance cost. tempdb and the BPE will comp
 
 ## What if the BPE disk disappears?
 
-On a cloud VM, using the temporary disk for BPE is the simple path, because the cloud provider gives you that disk ready to use. But it's ephemeral and has no redundancy. If the physical host fails, the disk can crash or simply disappear. On premises, putting the BPE on a single SSD without redundancy, or one less reliable than the other disks in your server, is basically the same scenario. And, in theory, that's acceptable. The documentation explains why: only clean pages are written to the L2 cache, which helps maintain data safety. Every page in the BPE file also exists in the data file, so if the file is lost, no data is lost with it.
+On a cloud VM, using the temporary disk for BPE is the simple path, because the cloud provider gives you that disk ready to use. But it's ephemeral and has no redundancy. If the physical host fails, the disk can crash or simply disappear. On premises, putting the BPE on a single high performance SSD without redundancy, or one less reliable than the other disks in your server, is basically the same scenario. And, in theory, that's acceptable. The documentation explains why: only clean pages are written to the L2 cache, which helps maintain data safety. Every page in the BPE file also exists in the data file, so if the file is lost, no data is lost with it.
 
 I wanted to see that in practice. With the queries running, I took the disk with the BPE file offline. SQL Server didn't crash. The queries kept running and started reading the pages from the data file.
 

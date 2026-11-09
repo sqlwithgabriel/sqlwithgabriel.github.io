@@ -17,6 +17,9 @@ type Props = {
 
 const { site } = config;
 
+// GoatCounter site code (the "xxx" in xxx.goatcounter.com). Empty disables analytics.
+const goatcounterCode = "sqlwithgabriel";
+
 const {
   title = site.title,
   description = site.description,
@@ -113,6 +116,28 @@ const rssHref = getRelativeLocaleUrl(
         window.__theme = { value: theme };
       })();
     </script>
+
+    {
+      goatcounterCode && (
+        <>
+          <script
+            is:inline
+            data-goatcounter={`https://${goatcounterCode}.goatcounter.com/count`}
+            async
+            src="https://gc.zgo.at/count.js"
+          />
+          <script is:inline>
+            // ClientRouter swaps pages without a full reload, so count each
+            // client-side navigation (the first load is counted by count.js).
+            document.addEventListener("astro:after-swap", () => {
+              window.goatcounter?.count?.({
+                path: location.pathname + location.search + location.hash,
+              });
+            });
+          </script>
+        </>
+      )
+    }
 
     <ClientRouter />
   </head>
